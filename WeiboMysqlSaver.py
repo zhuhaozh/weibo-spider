@@ -1,4 +1,5 @@
-import logging.config, logging
+import logging
+import logging.config
 
 import pymysql
 
@@ -132,20 +133,6 @@ class WeiBoMysqlSaver(object):
         """
 
         for forwardBlog in weiboUserInfo.forwardBlog:
-            '''
-                self.createTime = None
-        self.likeNum = 0
-        self.commentNum = 0
-        self.forwardNum = 0
-        self.originalLikeNum = 0
-        self.originalCommentNum = 0
-        self.originalForwardNum = 0
-        self.via = None
-        self.originalOwner = None  # 原作者
-        self.originalContent = None
-        self.forwardOwner = None
-        self.forwardContent = None
-        '''
             tmp = {'createTime': forwardBlog.createTime,
                    'likeNum': forwardBlog.likeNum,
                    'commentNum': forwardBlog.commentNum,
@@ -159,19 +146,11 @@ class WeiBoMysqlSaver(object):
                    'originalOwner': forwardBlog.originalOwner,
                    'originalContent': forwardBlog.originalContent,
                    'forwardOwner': forwardBlog.forwardOwner,
-                   'forwardContent': forwardBlog.forwardContent
+                   'forwardContent': forwardBlog.forwardContent,
+                   'uniCode': forwardBlog.uniCode
                    }
             forwardBlogs.append(tmp)
 
-        """
-        self.createTime = None
-        self.likeNum = 0
-        self.commentNum = 0
-        self.forwardNum = 0
-        self.via = None
-        self.owner = None  # 原作者
-        self.content = None
-        """
         for originalBlog in weiboUserInfo.originalBlog:
             tmp = {'createTime': originalBlog.createTime,
                    'likeNum': originalBlog.likeNum,
@@ -180,19 +159,12 @@ class WeiBoMysqlSaver(object):
                    'via': originalBlog.via,
                    'owner': originalBlog.owner,
                    'content': originalBlog.content,
-                   'picNum': originalBlog.picNum
+                   'picNum': originalBlog.picNum,
+                   'uniCode': originalBlog.uniCode
+
                    }
             originalBlogs.append(tmp)
 
-        # print(userInfoDict)
-        # print("--------------")
-        # for ob in originalBlogs:
-        #     print(ob)
-        # print("--------------")
-        # for fb in forwardBlogs:
-        #     print(fb)
-        # print(originalBlogs)
-        # print(forwardBlogs)
         self.logger.debug(userInfoDict)
         self.logger.debug(originalBlogs)
         self.logger.debug(forwardBlogs)
@@ -257,14 +229,14 @@ class WeiBoMysqlSaver(object):
         '''
         sql = '''insert into weibo_original_blog (
                               create_time,like_num,comment_num,forward_num,
-                              via,owner_id,content,pic_num)
-                              values('%s','%s','%s','%s','%s','%s','%s','%s')
+                              via,owner_id,content,pic_num,uni_code)
+                              values('%s','%s','%s','%s','%s','%s','%s','%s','%s')
                               ''' % (
             originalBlog['createTime'], originalBlog['likeNum'], originalBlog['commentNum'],
             originalBlog['forwardNum'], originalBlog['via'], originalBlog['owner'],
-            originalBlog['content'], originalBlog['picNum'])
+            originalBlog['content'], originalBlog['picNum'], originalBlog['uniCode'])
 
-        print(sql)
+        # print(sql)
 
         conn = self.__getConnect()
         cursor = self.__cursorUtf8Wrapper(conn.cursor())
@@ -314,16 +286,16 @@ class WeiBoMysqlSaver(object):
                               create_time,like_num,comment_num,forward_num,pic_num,
                               original_like_num,original_comment_num,original_forward_num,
                               original_pic_num,via,original_owner_id,original_content,
-                              forward_owner_id,forward_content)
-                              values('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')
+                              forward_owner_id,forward_content,uni_code)
+                              values('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')
                               ''' % (
             forwardBlog['createTime'], forwardBlog['likeNum'], forwardBlog['commentNum'],
             forwardBlog['forwardNum'], forwardBlog['picNum'], forwardBlog['originalLikeNum'],
             forwardBlog['originalCommentNum'], forwardBlog['originalForwardNum'], forwardBlog['originalPicNum'],
             forwardBlog['via'], forwardBlog['originalOwner'], forwardBlog['originalContent'],
-            forwardBlog['forwardOwner'], forwardBlog['forwardContent'])
+            forwardBlog['forwardOwner'], forwardBlog['forwardContent'], forwardBlog['uniCode'])
 
-        print(sql)
+        # print(sql)
         conn = self.__getConnect()
         cursor = self.__cursorUtf8Wrapper(conn.cursor())
         cursor.execute(sql)

@@ -14,6 +14,7 @@ class WeiboForwardBlog(object):
         self.originalContent = None
         self.forwardOwner = None
         self.forwardContent = None
+        self.uniCode = None
 
     @staticmethod
     def generateWeiboBlog():

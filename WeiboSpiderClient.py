@@ -1,12 +1,13 @@
-import logging, logging.config
+import logging
+import logging.config
 from time import sleep
 
 import pymysql
 
 from weibo_spider.SpiderRecovery import SpiderRecovery
-from weibo_spider.WeiboMysqlSaver import WeiBoMysqlSaver
 from weibo_spider.WeiboIdManager import WeiboIdManager
 from weibo_spider.WeiboInfoFetcher import WeiboInfoFetcher
+from weibo_spider.WeiboMysqlSaver import WeiBoMysqlSaver
 from weibo_spider.WeiboParser import WeiboParser
 
 
@@ -66,18 +67,18 @@ class WeiboSpiderClient(object):
                       % (usedCount, leftCount, (usedCount * 100 / (leftCount + usedCount)),
                          (usedCount * 100 / self.limit)))
 
-                if self.recovery is not None:
-                    self.recovery.updateBackup(wbid)  # backup
-                    self.recovery.backupList(fans)  # backup
-
                 userInfoContent = self.fetcher.fetchPage(self.fetcher.infoBaseUrl, wbid)
+                if userInfoContent is None:
+                    print('userInfoContent is None !!!!')
+                    continue
+                print(userInfoContent)
                 wbuser = self.parser.parseUserInfo(userInfoContent, wbid)
 
                 blogsContent = self.fetcher.fetchPageWithNum(self.fetcher.blogsBaseUrl, wbid, 1)
-                [wbuser.originalBlog, wbuser.forwardBlog, numberList] \
-                    = self.parser.parseUserBlog(blogsContent)
-
-                [wbuser.weiBoNum, wbuser.followNum, wbuser.fansNum, wbuser.verified] = numberList
+                if blogsContent is not None:
+                    [wbuser.originalBlog, wbuser.forwardBlog, numberList] \
+                        = self.parser.parseUserBlog(blogsContent)
+                    [wbuser.weiBoNum, wbuser.followNum, wbuser.fansNum, wbuser.verified] = numberList
                 [userInfoDict, originalBlogs, forwardBlogs] = self.saver.generateWeiboUserAsDict(wbuser)
 
                 # save to mysql
@@ -90,11 +91,16 @@ class WeiboSpiderClient(object):
                 finally:
                     self.saver.closeConn()
 
+                if self.recovery is not None:
+                    self.recovery.updateBackup(wbid)  # backup
+                    self.recovery.backupList(fans)  # backup
+
                 sleep(self.sleepSeconds)
 
         except Exception as e:
             self.logger.exception(e)
         finally:
+
             # here to recovery from the file
             if self.__isNotFinished() \
                     and self.recoverCount <= self.recoverTimes \
@@ -102,7 +108,6 @@ class WeiboSpiderClient(object):
                 self.logger.warning('Exceptions occurred and try to restart it .')
                 self.run()
             self.__printSuccessMessage()
-
 
     def setBackupToFile(self, trueOrFalse):
         self.recovery = SpiderRecovery(trueOrFalse)
@@ -125,12 +130,10 @@ class WeiboSpiderClient(object):
 
 if __name__ == '__main__':
     initId = '1195054531'
-    # initId = '2413995587'
 
     WeiboSpiderClient(initId) \
-        .setSleepSeconds(0.2) \
-        .setLimitRecords(50) \
+        .setSleepSeconds(0.05) \
+        .setLimitRecords(10000) \
         .setRecoverTimes(3) \
+        .setBackupToFile(True) \
         .run()
-        # .setBackupToFile(True) \
-        # .run()

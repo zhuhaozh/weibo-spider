@@ -8,6 +8,7 @@ class WeiboOriginalBlog(object):
         self.via = None
         self.owner = None  # 原作者
         self.content = None
+        self.uniCode = None
 
     def print(self):
         print(', '.join(['%s:%s' % item for item in self.__dict__.items()]))

@@ -1,13 +1,13 @@
+import logging
+import logging.config
 import re
+from datetime import datetime
+from datetime import timedelta
 
 from bs4 import BeautifulSoup
 
 from weibo_spider.WeiboForwardBlog import WeiboForwardBlog
-from datetime import datetime
-from datetime import timedelta
 from weibo_spider.WeiboUser import WeiboUser
-import logging
-import logging.config
 
 
 class WeiboParser(object):
@@ -18,6 +18,8 @@ class WeiboParser(object):
 
     def parseUserFansPage(self, content):
         logging.debug(content)
+        if content is None:
+            return
         soup = BeautifulSoup(content, "html.parser")
         fans = soup.findAll('table')
         retList = []
@@ -37,6 +39,8 @@ class WeiboParser(object):
         return retList
 
     def parseUserBlog(self, content):
+        if content is None:
+            return
         retForwardBolgs = []
         retOriginalBolgs = []
 
@@ -180,6 +184,10 @@ class WeiboParser(object):
         retOBlog.via = via
         retOBlog.createTime = self.generateDate(dayStr)
 
+        retOBlog.uniCode = \
+            str(retOBlog.createTime).__hash__() \
+            + str(retOBlog.owner).__hash__()
+
         return retOBlog
 
     def generateForwardBlog(self, blog, forwardBlog):
@@ -249,9 +257,15 @@ class WeiboParser(object):
         retFBlog.via = via
         retFBlog.createTime = self.generateDate(dayStr)
 
+        retFBlog.uniCode = \
+            str(retFBlog.createTime).__hash__() \
+            + str(retFBlog.forwardOwner).__hash__()
+
         return retFBlog
 
     def parseUserInfo(self, content, userId):
+        if content is None:
+            return
         soup = BeautifulSoup(content, 'html.parser')
 
         classc = soup.findAll('div', class_='c')  # class='c'
@@ -311,3 +325,8 @@ class WeiboParser(object):
 
         # self.logger.info(wu)
         return wu
+
+
+if __name__ == '__main__':
+    ss = '2134'
+    print(ss.__hash__())
