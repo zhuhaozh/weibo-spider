@@ -1,6 +1,5 @@
-import logging, logging.config
-
-from weibo_spider.SpiderRecovery import SpiderRecovery
+import logging
+import logging.config
 
 
 class WeiboIdManager(object):
@@ -16,6 +15,8 @@ class WeiboIdManager(object):
             return False
         else:
             self.usedIdSet, self.newIdSet = recovery.recover()
+            if self.newIdSet == 0:
+                return False
             return True
 
     def usedIdCount(self):

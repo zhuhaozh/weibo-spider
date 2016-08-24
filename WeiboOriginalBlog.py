@@ -8,7 +8,12 @@ class WeiboOriginalBlog(object):
         self.via = None
         self.owner = None  # 原作者
         self.content = None
-        self.uniCode = None
+        # self.uniCode = None
 
-    def print(self):
-        print(', '.join(['%s:%s' % item for item in self.__dict__.items()]))
+    def getUniCode(self):
+        return str(self.createTime).__hash__() \
+               + str(self.owner).__hash__() \
+               + str(self.content).__hash__()
+
+
+

@@ -16,9 +16,8 @@ class WeiboForwardBlog(object):
         self.forwardContent = None
         self.uniCode = None
 
-    @staticmethod
-    def generateWeiboBlog():
-        pass
-
-    def print(self):
-        print(', '.join(['%s:%s' % item for item in self.__dict__.items()]))
+    def getUniCode(self):
+        return str(self.createTime).__hash__() \
+               + str(self.forwardOwner).__hash__() \
+               + str(self.originalOwner).__hash__() \
+               + str(self.originalContent).__hash__()

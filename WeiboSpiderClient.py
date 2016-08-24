@@ -30,25 +30,37 @@ class WeiboSpiderClient(object):
         self.idManager = WeiboIdManager()
         self.idManager.addNewId(initId_)
 
-    def __isNotFinished(self):
-        return self.idManager.hasNewId() and self.idManager.usedIdCount() < self.limit
-
-    def __printSuccessMessage(self):
+    @staticmethod
+    def __printSuccessMessage():
         print('--------------------------------------')
         print('---------   SUCCESSFULLY   -----------')
         print('--------------------------------------')
 
+    def __isNotFinished(self):
+        return self.idManager.hasNewId() and self.idManager.usedIdCount() < self.limit
+
+    def setBackupToFile(self, trueOrFalse):
+        self.recovery = SpiderRecovery(trueOrFalse)
+        if self.recovery.isBackupExists() is False:
+            self.recovery.updateBackup(self.initId, self.recovery.MODE_NEW)
+        return self
+
+    def setSleepSeconds(self, sleepSeconds):
+        self.sleepSeconds = int(sleepSeconds)
+        return self
+
+    def setLimitRecords(self, limit):
+        self.limit = limit
+        return self
+
+    def setRecoverTimes(self, times):
+        self.recoverTimes = times
+        return self
+
     def run(self):
         try:
-            if self.idManager.isBackup(self.recovery) is not False:
-                print('Found the backup and competed the recovery ')
-                if len(self.idManager.newIdSet) == 0 \
-                        and len(self.idManager.usedIdSet) == 0:
-                    self.idManager.addNewId(self.initId)
-                    print('Backup is empty。')
-                else:
-                    print('Recovered  : UsedData：%i , NewData：%i' % (
-                        len(self.idManager.usedIdSet), len(self.idManager.newIdSet)))
+            if self.idManager.isBackup(self.recovery) is False:
+                self.idManager.addNewId(self.initId)
 
             while self.__isNotFinished():
                 # while self.idManager.hasNewId():
@@ -78,7 +90,8 @@ class WeiboSpiderClient(object):
                 if blogsContent is not None:
                     [wbuser.originalBlog, wbuser.forwardBlog, numberList] \
                         = self.parser.parseUserBlog(blogsContent)
-                    [wbuser.weiBoNum, wbuser.followNum, wbuser.fansNum, wbuser.verified] = numberList
+                    if numberList is not None:
+                        [wbuser.weiBoNum, wbuser.followNum, wbuser.fansNum, wbuser.verified] = numberList
                 [userInfoDict, originalBlogs, forwardBlogs] = self.saver.generateWeiboUserAsDict(wbuser)
 
                 # save to mysql
@@ -92,8 +105,8 @@ class WeiboSpiderClient(object):
                     self.saver.closeConn()
 
                 if self.recovery is not None:
-                    self.recovery.updateBackup(wbid)  # backup
-                    self.recovery.backupList(fans)  # backup
+                    self.recovery.updateBackup(wbid, self.recovery.MODE_OLD)  # backup
+                    self.recovery.backupList(fans, self.recovery.MODE_NEW)  # backup
 
                 sleep(self.sleepSeconds)
 
@@ -106,26 +119,9 @@ class WeiboSpiderClient(object):
                     and self.recoverCount <= self.recoverTimes \
                     and self.idManager.isBackup(self.recovery):
                 self.logger.warning('Exceptions occurred and try to restart it .')
+                self.recoverCount += 1
                 self.run()
             self.__printSuccessMessage()
-
-    def setBackupToFile(self, trueOrFalse):
-        self.recovery = SpiderRecovery(trueOrFalse)
-        if self.recovery.isBackupExists() is False:
-            self.recovery.backup(self.initId)
-        return self
-
-    def setSleepSeconds(self, sleepSeconds):
-        self.sleepSeconds = int(sleepSeconds)
-        return self
-
-    def setLimitRecords(self, limit):
-        self.limit = limit
-        return self
-
-    def setRecoverTimes(self, times):
-        self.recoverTimes = times
-        return self
 
 
 if __name__ == '__main__':

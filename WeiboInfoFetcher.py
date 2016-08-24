@@ -84,50 +84,62 @@ class WeiboLogin(object):
         }
         url = 'http://login.weibo.cn/login/' + self.urlParams
 
-        print(param)
+        # print(param)
         r = requests.post(url=url, data=param)
 
         if '搜索' in r.text:
             print('用户%s，登陆成功' % self.username)
         else:
             print('登陆不成功')
-            print(r.text)
         return r
 
 
 class CookiesPool(object):
-    def __init__(self, configFile='configs/weibo_url_headers.conf',
-                 maxSize=-1, force=True, continuous=50, sleepSecs=60.0):
+    """ CookiesPool
+     缓存连接池，用于管理多个账号的缓存信息，均匀分配每个账号的使用次数。
+     以达到有效解决微博访问403的问题，目前测试1小时，使用5个账号信息，未出现过403
+
+     需要配置参数 :
+     1. maxSize : 设置最大的缓存个数
+     2. continuous : 每个缓存连续使用的次数，默认50次后 将该缓存失效
+     3. force : 在所有缓存都失效后是否sleep一段时间
+     4. sleepSecs : 在设置force后生效，设置sleep的时间
+    """
+
+    def __init__(self, configFile='configs/accounts-list.conf',
+                 maxSize=-1, continuous=50, force=True, sleepSecs=5.0):
         CONF_LOG = "configs/logging.conf"
         logging.config.fileConfig(CONF_LOG)  # 采用配置文件
         self.logger = logging.getLogger()
 
-        self.configFile = configFile
-        self.cookiesPool = list()
+        self.__configFile = configFile
+        self.__cookiesPool = list()
 
-        self.current = -1
-        self.last = -1
-        self.continuousUseCount = 0
+        self.__current = -1
+        self.__last = -1
+        self.__continuousUseCount = 0
 
-        self.sleepSecs = sleepSecs
+        self.__sleepSecs = sleepSecs
 
         self.size = 0
-        self.maxSize = maxSize
+        self.__maxSize = maxSize
         self.force = force
-        self.continuous = continuous
+        self.__continuous = continuous
 
-        self.invalidatedCookies = None
-        self.loadConfigure()
+        self.__invalidatedCookies = None
+        self.__loadConfigure()
 
-    def loadConfigure(self):
+    def __loadConfigure(self):
+        if self.__isPersistCookies():
+            return
 
-        if os.path.exists(self.configFile):
+        if os.path.exists(self.__configFile):
             counter = 0
-            conf = open(self.configFile, 'r')
+            conf = open(self.__configFile, 'r')
             for line in conf.readlines():
                 if line.rstrip().lstrip() == '':
                     continue
-                if self.maxSize != -1 and self.maxSize >= counter:
+                if self.__maxSize != -1 and self.__maxSize >= counter:
                     break
                 # headers = dict()
                 try:
@@ -142,12 +154,12 @@ class CookiesPool(object):
                     print('请输入验证码：')
                     captcha = input()
                     r = weiboLogin.setCaptcha(captcha).login()
-                    self.cookiesPool.append(r.request.headers)
+                    self.__cookiesPool.append(r.request.headers)
                     counter += 1
                 except ValueError:
                     self.logger.error('配置文件错误！格式为：【账号:密码】，冒号为英文冒号')
-            self.size = len(self.cookiesPool)
-            self.invalidatedCookies = self.__initArray(self.size)
+            self.size = len(self.__cookiesPool)
+            self.__invalidatedCookies = self.__initArray(self.size)
         else:
             self.logger.warning('headers conf file does\'t exists.')
 
@@ -159,53 +171,80 @@ class CookiesPool(object):
         return arr
 
     def getCookies(self):
+        """getCookies()
+        获取缓存池中的有效cookies
+        1. 如果存在没有失效的缓存，则缓存第一个遍历到的未失效的缓存
+        2. 如果缓存都已失效，则判断force属性：
+            a)如果 force 为true 则sleep一段时间后随机返回一个cookies
+            b)如果 force 为false 则直接返回一个cookies
+
+        :return: cookies
         """
-        只返回未失效的cookies
-        :return:
-        """
-        print(self.invalidatedCookies)
-        self.last = self.current
+        print(self.__invalidatedCookies)
+        self.__last = self.__current
         index = -1
-        for i in range(0, len(self.invalidatedCookies)):
-            if self.invalidatedCookies[i] == 0:  # 未被休眠
-                if i == self.last:  # 如果于上一次使用的为同一个cookies
-                    self.continuousUseCount += 1
+        for i in range(0, len(self.__invalidatedCookies)):
+            if self.__invalidatedCookies[i] == 0:  # 未被休眠
+                if i == self.__last:  # 如果于上一次使用的为同一个cookies
+                    self.__continuousUseCount += 1
                     # self.invalidateCurrent()
-                    print('连续使用次数:%s : ' % self.continuousUseCount, self.continuous)
-                    if self.continuousUseCount >= self.continuous:  # 如果连续使用的次数大于40，则继续选择下一个
+                    print('连续使用次数:%s : ' % self.__continuousUseCount, self.__continuous)
+                    if self.__continuousUseCount >= self.__continuous:  # 如果连续使用的次数大于40，则继续选择下一个
                         index = i
                         self.invalidateCurrent()
                         continue
 
                 else:
-                    self.current = i
-                    self.continuousUseCount = 0
+                    self.__current = i
+                    self.__continuousUseCount = 0
                 self.logger.info("use pool index : %s" % i)
-                self.invalidateReduce()
-                return self.cookiesPool[i]
+                self.__invalidateReduce()
+                return self.__cookiesPool[i]
 
         # 如果可以执行到这里，代表所有的资源都已失效
         if self.force:
             from time import sleep
-            self.logger.warning('cookiesPool中的所有资源都已失效。请等待%s秒' % self.sleepSecs)
-            sleep(self.sleepSecs)
+            self.logger.warning('cookiesPool中的所有资源都已失效。请等待%s秒' % self.__sleepSecs)
+            sleep(self.__sleepSecs)
         if index == -1:
             import random
             index = random.randint(0, self.size - 1)
         self.logger.info("use pool index : %s" % index)
-        self.invalidateReduce()
-        return self.cookiesPool[index]
+        self.__invalidateReduce()
+        return self.__cookiesPool[index]
 
-    def invalidateReduce(self):
+    def __invalidateReduce(self):
+        """
+        减少每个失效缓存的死亡时间
+        :return:
+        """
         for i in range(self.size):
-            if self.invalidatedCookies[i] != 0:
-                self.invalidatedCookies[i] -= 1
+            if self.__invalidatedCookies[i] != 0:
+                self.__invalidatedCookies[i] -= 1
 
     def invalidateCurrent(self):
+        """ invalidateCurrent
+        使当前缓存失效
+        :return:
+        """
         if self.size > 10:  # 如果有10个以上的cookies 则不需要中途休眠
-            self.invalidatedCookies[self.current] = self.continuous * (self.size - 1)
+            self.__invalidatedCookies[self.__current] = self.__continuous * (self.size - 1)
         else:
-            self.invalidatedCookies[self.current] = (self.continuous + 1) * (self.size - 1)
+            self.__invalidatedCookies[self.__current] = (self.__continuous + 1) * (self.size - 1)
+
+    # TODO :缓存缓存连接池的持久化，待完成。完成该功能后 -> V0.699
+    def __isPersistCookies(self):
+        return False
+
+    def __recCookies(self):
+        return False
+
+    def persistCookies(self):
+        """
+        持久化 cookies
+        :return:
+        """
+        pass
 
 
 class WeiboInfoFetcher(object):
@@ -215,7 +254,7 @@ class WeiboInfoFetcher(object):
         self.infoBaseUrl = 'http://weibo.cn/%s/info'
         self.failedTryNum = failedTryNum
         self.failedTryCounter = 0
-        self.cookiesPool = CookiesPool(sleepSecs=0.1, continuous=50)
+        self.cookiesPool = CookiesPool(sleepSecs=3, continuous=50)
         if self.failedTryNum == -1:
             self.failedTryNum = self.cookiesPool.size
 
@@ -231,7 +270,11 @@ class WeiboInfoFetcher(object):
             return str(resp.content, 'utf-8')
         else:
             self.cookiesPool.invalidateCurrent()
-            self.fetchPageWithNum(baseUrl, userId, pageNum)
+            if self.failedTryNum < self.failedTryCounter:
+                self.failedTryCounter += 1
+                self.fetchPageWithNum(baseUrl, userId, pageNum)
+                self.logger.info('%s获取失败，继续尝试,已经尝试次数%s'
+                                 % baseUrl, self.failedTryCounter)
 
     def fetchPage(self, baseUrl, userId):
         url = baseUrl % userId
@@ -243,7 +286,8 @@ class WeiboInfoFetcher(object):
             if self.failedTryNum < self.failedTryCounter:
                 self.failedTryCounter += 1
                 self.fetchPage(baseUrl, userId)
-                print('继续尝试,已经尝试次数%s' % self.failedTryCounter)
+                self.logger.info('%s获取失败，继续尝试,已经尝试次数%s'
+                                 % baseUrl, self.failedTryCounter)
 
     def test(self):
         resp = requests.get("http://weibo.cn/2413995587/profile",
@@ -264,9 +308,9 @@ class WeiboInfoFetcher(object):
     def test1(self):
         url = 'http://weibo.cn/1195054531/fans'
         cookies = self.cookiesPool.getCookies()
-        print(cookies)
+        # print(cookies)
         resp = requests.get(url, headers=cookies)
-        print(resp.text)
+        # print(resp.text)
         return resp
 
 

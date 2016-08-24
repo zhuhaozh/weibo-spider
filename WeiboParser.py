@@ -35,7 +35,7 @@ class WeiboParser(object):
                 self.logger.debug(wbid)
                 retList.append(wbid)
             except Exception:
-                logging.error('parse the fans page error ')
+                self.logger.error('parse the fans page error ')
         return retList
 
     def parseUserBlog(self, content):
@@ -45,27 +45,36 @@ class WeiboParser(object):
         retOriginalBolgs = []
 
         soup = BeautifulSoup(content, "html.parser")
-        numberListSoup = soup.find('div', class_='tip2').get_text()
-        numberList = re.findall('\d+', numberListSoup)
-        numberList.pop()
+        # here can be error
+        numberList = None
+        try:
+            numberListSoup = soup.find('div', class_='tip2').get_text()
+            numberList = re.findall('\d+', numberListSoup)
+            numberList.pop()
 
-        verifiedInfoUrlSoup = soup.find('div', class_='ut') \
-            .find('span', class_='ctt') \
-            .find('img')
+            verifiedInfoUrlSoup = soup.find('div', class_='ut') \
+                .find('span', class_='ctt') \
+                .find('img')
 
-        if verifiedInfoUrlSoup is not None:
+            if verifiedInfoUrlSoup is not None:
 
-            verifiedInfoUrl = verifiedInfoUrlSoup.get('src')
-            if '5338.gif' in verifiedInfoUrl:  # 黄V
-                numberList.append('1')
-            elif '5337.gif' in verifiedInfoUrl:  # 蓝V
-                numberList.append('2')
+                verifiedInfoUrl = verifiedInfoUrlSoup.get('src')
+                if '5338.gif' in verifiedInfoUrl:  # 黄V
+                    numberList.append('1')
+                elif '5337.gif' in verifiedInfoUrl:  # 蓝V
+                    numberList.append('2')
+                else:
+                    numberList.append('0')
             else:
                 numberList.append('0')
-        else:
-            numberList.append('0')
+        except AttributeError:
+            self.logger.warning('numberListSoup not found')
 
-        owner = soup.find("span", class_="ctt").get_text().split(" ")[0]
+        try:
+            owner = soup.find("span", class_="ctt").get_text().split(" ")[0]
+        except AttributeError:
+            self.logger.warning('not found the blog owner .')
+
         blogs = soup.findAll("div", class_='c')
         for blog in blogs:
             forwardBlog = blog.findAll('span', class_='cmt')
@@ -169,15 +178,15 @@ class WeiboParser(object):
         try:
             retOBlog.likeNum = numPatten.findall(likeNum)[0]
         except IndexError:
-            self.logger.error('IndexError : retOBlog.likeNum not exists ')
+            self.logger.warning('IndexError : retOBlog.likeNum not exists ')
         try:
             retOBlog.forwardNum = numPatten.findall(forwardNum)[0]
         except IndexError:
-            self.logger.error('IndexError : retOBlog.forwardNum not exists ')
+            self.logger.warning('IndexError : retOBlog.forwardNum not exists ')
         try:
             retOBlog.commentNum = numPatten.findall(commentNum)[0]
         except IndexError:
-            self.logger.error('IndexError : retOBlog.commentNum not exists ')
+            self.logger.warning('IndexError : retOBlog.commentNum not exists ')
 
         [dayStr, via] = self.parseDateAndVia(blog.find('span', class_='ct').get_text())
         # [day, time, via] = re.split(" |\xa0", blog.find('span', class_='ct').get_text(), 2)
@@ -208,8 +217,12 @@ class WeiboParser(object):
         # retFBlog.originalOwner = forwardBlogText.split(" ")[1]
 
         # numPatten.findall(forwardBlog[])
-        retFBlog.originalLikeNum = numPatten.findall(forwardBlog[1].get_text())[0]
-        retFBlog.originalForwardNum = numPatten.findall(forwardBlog[2].get_text())[0]
+        try:
+            retFBlog.originalLikeNum = numPatten.findall(forwardBlog[1].get_text())[0]
+            retFBlog.originalForwardNum = numPatten.findall(forwardBlog[2].get_text())[0]
+        except IndexError:
+            logging.warning('cannot find the [retFBlog.originalLikeNum]')
+
         # for b in forwardBlog:
         #     print(b.get_text())
         # print(forwardBlog)
@@ -242,15 +255,15 @@ class WeiboParser(object):
         try:
             retFBlog.likeNum = numPatten.findall(likeNum)[0]
         except IndexError:
-            self.logger.error('IndexError : retFBlog.likeNum not exists ')
+            self.logger.warning('IndexError : retFBlog.likeNum not exists ')
         try:
             retFBlog.forwardNum = numPatten.findall(forwardNum)[0]
         except IndexError:
-            self.logger.error('IndexError : retFBlog.forwardNum not exists ')
+            self.logger.warning('IndexError : retFBlog.forwardNum not exists ')
         try:
             retFBlog.commentNum = numPatten.findall(commentNum)[0]
         except IndexError:
-            self.logger.error('IndexError : retFBlog.commentNum not exists ')
+            self.logger.warning('IndexError : retFBlog.commentNum not exists ')
 
         [dayStr, via] = self.parseDateAndVia(blog.find('span', class_='ct').get_text())
         # [day, time, via] = re.split(" |\xa0", blog.find('span', class_='ct').get_text(), 2)

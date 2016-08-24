@@ -9,7 +9,7 @@ if __name__ == '__main__':
     # print(dataList)
     recovery.backupList(dataList)
     # recovery.printStatus()
-    for i in range(10):
-        recovery.updateBackup()
-    recovery.recoverFromFile()
+    # for i in range(10):
+    #     recovery.updateBackup()
+    # recovery.recoverFromFile()
 

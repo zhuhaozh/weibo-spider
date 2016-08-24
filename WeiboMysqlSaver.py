@@ -10,13 +10,10 @@ class WeiBoMysqlSaver(object):
         file = open(confFile, 'r')
         confDict = {}
         for i in range(5):
-            line = file.readline()
-            line = line.replace(' ', '')
-            line = line.replace('\n', '')
+            line = file.readline().replace(' ', '').replace('\n', '')
             try:
                 [k, v] = line.split(":")
                 confDict[k] = v
-
             except Exception:
                 logging.error(confFile, 'configure file properties error ')
 
@@ -43,42 +40,22 @@ class WeiBoMysqlSaver(object):
         self.passwd = passwd
         self.db = db
 
-    def closeConn(self):
-        if self.conn is not None:
-            self.conn.close()
-
     def __getConnect(self):
         conn = pymysql.connect(host=self.host, port=self.port,
                                user=self.user, passwd=self.passwd, db=self.db)
         conn.set_charset('utf8')
         return conn
 
-    def __cursorUtf8Wrapper(self, cursor):
+    @staticmethod
+    def __cursorUtf8Wrapper(cursor):
         cursor.execute('SET NAMES utf8mb4;')
         cursor.execute('SET CHARACTER SET utf8mb4;')
         cursor.execute('SET character_set_connection=utf8mb4;')
         return cursor
 
-    def test(self):
-
-        sql = '''INSERT INTO weibo_original_blog(
-        create_time, like_num, comment_num, forward_num,
-        via, owner_id, content, pic_num)
-    VALUES('2016-08-18 18:111:00', '0', '0', '0', '来自iPhone 6', '张铭恩最好的宝宝',
-           '#张铭恩_##张铭恩张副官# 在雷克赛得坐蒸汽小火车，看到山洞宝宝直接串戏到老九门@张铭恩_ 233🌚🌚🌚有幸看到换车头的过程还喷着气，本来很高兴的拍照然后被呼了一脸⋯⋯呛死我了 英国·雷克赛得', '-100')
-           '''
-
-        conn = self.__getConnect()
-        cursor = conn.cursor()
-        cursor.execute('SET NAMES utf8mb4;')
-        cursor.execute('SET CHARACTER SET utf8mb4;')
-        cursor.execute('SET character_set_connection=utf8mb4;')
-
-        cursor.execute(sql)
-        conn.commit()
-        res = cursor.fetchall()
-
-        return res
+    def closeConn(self):
+        if self.conn is not None:
+            self.conn.close()
 
     def generateWeiboUserAsDict(self, weiboUserInfo):
         forwardBlogs = list()
@@ -147,7 +124,7 @@ class WeiBoMysqlSaver(object):
                    'originalContent': forwardBlog.originalContent,
                    'forwardOwner': forwardBlog.forwardOwner,
                    'forwardContent': forwardBlog.forwardContent,
-                   'uniCode': forwardBlog.uniCode
+                   'uniCode': forwardBlog.getUniCode()
                    }
             forwardBlogs.append(tmp)
 
@@ -160,7 +137,7 @@ class WeiBoMysqlSaver(object):
                    'owner': originalBlog.owner,
                    'content': originalBlog.content,
                    'picNum': originalBlog.picNum,
-                   'uniCode': originalBlog.uniCode
+                   'uniCode': originalBlog.getUniCode()
 
                    }
             originalBlogs.append(tmp)
@@ -209,7 +186,7 @@ class WeiBoMysqlSaver(object):
             weiboUserDict['address'], weiboUserDict['tags'])
         '''
 
-        print(sql)
+        # print(sql)
         conn = self.__getConnect()
         cursor = self.__cursorUtf8Wrapper(conn.cursor())
         cursor.execute(sql)
@@ -306,6 +283,5 @@ class WeiBoMysqlSaver(object):
 if __name__ == '__main__':
     saver = WeiBoMysqlSaver.getInstanceByConf('configs/db.conf')
 
-    print(saver.test())
     # saver = WeiBoMysqlSaver()
     # print(saver.test())
