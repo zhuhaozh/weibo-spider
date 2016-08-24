@@ -1,27 +1,4 @@
--- MySQL dump 10.13  Distrib 5.7.13, for Linux (x86_64)
---
--- Host: localhost    Database: weibo_spider
--- ------------------------------------------------------
--- Server version	5.7.13-0ubuntu0.16.04.2
-
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8 */;
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-
---
--- Table structure for table `weibo_original_blog`
---
-
-DROP TABLE IF EXISTS `weibo_original_blog`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
+DROP TABLE `weibo_spider`.`weibo_forward_blog`;
 CREATE TABLE `weibo_original_blog` (
   `wobid` int(11) NOT NULL AUTO_INCREMENT,
   `create_time` varchar(40) DEFAULT NULL,
@@ -33,25 +10,34 @@ CREATE TABLE `weibo_original_blog` (
   `owner_id` varchar(30) DEFAULT NULL,
   `content` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`wobid`)
-) ENGINE=InnoDB AUTO_INCREMENT=321 DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB AUTO_INCREMENT=2171 DEFAULT CHARSET=utf8mb4
 
---
--- Dumping data for table `weibo_original_blog`
---
+  SELECT count(*) FROM weibo_spider.weibo_original_blog;
 
-LOCK TABLES `weibo_original_blog` WRITE;
-/*!40000 ALTER TABLE `weibo_original_blog` DISABLE KEYS */;
-/*!40000 ALTER TABLE `weibo_original_blog` ENABLE KEYS */;
-UNLOCK TABLES;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+-- 查找重复数据
+SELECT count(*) FROM weibo_spider.weibo_original_blog
+	WHERE uni_code = ANY (
+		SELECT uni_code FROM weibo_original_blog
+		GROUP BY uni_code HAVING COUNT(uni_code) > 1);
 
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+-- 数据去重，保存在临时数据库中
+SET SQL_SAFE_UPDATES=0;
+drop table if exists tmp_ob;
+create table tmp_ob as
+	select wobid from weibo_spider.weibo_original_blog
+		where wobid in (
+			select max(wobid) from weibo_spider.weibo_original_blog
+			group by uni_code);
 
--- Dump completed on 2016-08-20 11:33:20
+select count(wobid) from weibo_spider.weibo_original_blog
+		where wobid in (
+			select max(wobid) from weibo_spider.weibo_original_blog
+			group by uni_code);
+
+-- 删除重复数据
+delete from weibo_spider.weibo_original_blog
+	where wobid not in  (
+		select wobid from tmp_ob);
+
+-- 删除临时数据库
+drop table if exists tmp_ob ;
