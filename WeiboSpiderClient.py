@@ -1,6 +1,8 @@
 import logging
 import logging.config
-from time import sleep
+import threading
+from concurrent.futures import thread
+from time import sleep, time
 
 import pymysql
 
@@ -83,7 +85,6 @@ class WeiboSpiderClient(object):
                 if userInfoContent is None:
                     print('userInfoContent is None !!!!')
                     continue
-                print(userInfoContent)
                 wbuser = self.parser.parseUserInfo(userInfoContent, wbid)
 
                 blogsContent = self.fetcher.fetchPageWithNum(self.fetcher.blogsBaseUrl, wbid, 1)
@@ -112,6 +113,7 @@ class WeiboSpiderClient(object):
 
         except Exception as e:
             self.logger.exception(e)
+            self.recoverCount += 1
         finally:
 
             # here to recovery from the file
@@ -119,7 +121,6 @@ class WeiboSpiderClient(object):
                     and self.recoverCount <= self.recoverTimes \
                     and self.idManager.isBackup(self.recovery):
                 self.logger.warning('Exceptions occurred and try to restart it .')
-                self.recoverCount += 1
                 self.run()
             self.__printSuccessMessage()
 

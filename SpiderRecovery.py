@@ -135,6 +135,7 @@ class SpiderRecovery(object):
         判断备份当前的最新备份文件是否存在
         :return:
         """
+        print(self.__backupFilePath)
         import os
         return os.path.exists(self.__backupFilePath)
 

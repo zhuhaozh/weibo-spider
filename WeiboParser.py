@@ -243,27 +243,30 @@ class WeiboParser(object):
             commentNum = linkas[length - 2].get_text()
 
         else:
-            picsAndInfoDiv = divs[1]
+            try:
+                picsAndInfoDiv = divs[1]
 
-            linkas = picsAndInfoDiv.findAll("a")
-            length = len(linkas)
+                linkas = picsAndInfoDiv.findAll("a")
+                length = len(linkas)
 
-            likeNum = linkas[length - 4].get_text()
-            forwardNum = linkas[length - 3].get_text()
-            commentNum = linkas[length - 2].get_text()
+                likeNum = linkas[length - 4].get_text()
+                forwardNum = linkas[length - 3].get_text()
+                commentNum = linkas[length - 2].get_text()
+                try:
+                    retFBlog.likeNum = numPatten.findall(likeNum)[0]
+                except IndexError:
+                    self.logger.warning('IndexError : retFBlog.likeNum not exists ')
+                try:
+                    retFBlog.forwardNum = numPatten.findall(forwardNum)[0]
+                except IndexError:
+                    self.logger.warning('IndexError : retFBlog.forwardNum not exists ')
+                try:
+                    retFBlog.commentNum = numPatten.findall(commentNum)[0]
+                except IndexError:
+                    self.logger.warning('IndexError : retFBlog.commentNum not exists ')
 
-        try:
-            retFBlog.likeNum = numPatten.findall(likeNum)[0]
-        except IndexError:
-            self.logger.warning('IndexError : retFBlog.likeNum not exists ')
-        try:
-            retFBlog.forwardNum = numPatten.findall(forwardNum)[0]
-        except IndexError:
-            self.logger.warning('IndexError : retFBlog.forwardNum not exists ')
-        try:
-            retFBlog.commentNum = numPatten.findall(commentNum)[0]
-        except IndexError:
-            self.logger.warning('IndexError : retFBlog.commentNum not exists ')
+            except IndexError:
+                self.logger.warning('IndexError : 微博信息获取失败')
 
         [dayStr, via] = self.parseDateAndVia(blog.find('span', class_='ct').get_text())
         # [day, time, via] = re.split(" |\xa0", blog.find('span', class_='ct').get_text(), 2)

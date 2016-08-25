@@ -131,37 +131,39 @@ class CookiesPool(object):
 
     def __loadConfigure(self):
         if self.__isPersistCookies():
-            return
-
-        if os.path.exists(self.__configFile):
-            counter = 0
-            conf = open(self.__configFile, 'r')
-            for line in conf.readlines():
-                if line.rstrip().lstrip() == '':
-                    continue
-                if self.__maxSize != -1 and self.__maxSize >= counter:
-                    break
-                # headers = dict()
-                try:
-                    [username, password] = line.split(":")
-                    username = str(username).lstrip().rstrip().replace('\n', '')
-                    password = str(password).lstrip().rstrip().replace('\n', '')
-
-                    weiboLogin = WeiboLogin() \
-                        .setUsername(username) \
-                        .setPassword(password) \
-                        .initLoginParams()
-                    print('请输入验证码：')
-                    captcha = input()
-                    r = weiboLogin.setCaptcha(captcha).login()
-                    self.__cookiesPool.append(r.request.headers)
-                    counter += 1
-                except ValueError:
-                    self.logger.error('配置文件错误！格式为：【账号:密码】，冒号为英文冒号')
-            self.size = len(self.__cookiesPool)
-            self.__invalidatedCookies = self.__initArray(self.size)
+            self.__recCookies()
         else:
-            self.logger.warning('headers conf file does\'t exists.')
+            if os.path.exists(self.__configFile):
+                counter = 0
+                conf = open(self.__configFile, 'r')
+                for line in conf.readlines():
+                    if line.rstrip().lstrip() == '':
+                        continue
+                    if self.__maxSize != -1 and self.__maxSize >= counter:
+                        break
+                    # headers = dict()
+                    try:
+                        [username, password] = line.split(":")
+                        username = str(username).lstrip().rstrip().replace('\n', '')
+                        password = str(password).lstrip().rstrip().replace('\n', '')
+
+                        weiboLogin = WeiboLogin() \
+                            .setUsername(username) \
+                            .setPassword(password) \
+                            .initLoginParams()
+                        print('请输入验证码：')
+                        captcha = input()
+                        r = weiboLogin.setCaptcha(captcha).login()
+                        self.__cookiesPool.append(r.request.headers)
+                        counter += 1
+                    except ValueError:
+                        self.logger.error('配置文件错误！格式为：【账号:密码】，冒号为英文冒号')
+                self.persistCookies()
+            else:
+                self.logger.warning('headers conf file does\'t exists.')
+
+        self.size = len(self.__cookiesPool)
+        self.__invalidatedCookies = self.__initArray(self.size)
 
     @staticmethod
     def __initArray(length):
@@ -233,18 +235,43 @@ class CookiesPool(object):
             self.__invalidatedCookies[self.__current] = (self.__continuous + 1) * (self.size - 1)
 
     # TODO :缓存缓存连接池的持久化，待完成。完成该功能后 -> V0.699
-    def __isPersistCookies(self):
-        return False
+    @staticmethod
+    def __isPersistCookies():
+        import os
+        cachadir = 'cache/persistcookies/'
+        fns = os.listdir(cachadir)
+        return len(fns) != 0
 
     def __recCookies(self):
-        return False
+        import os
+        cachadir = 'cache/persistcookies/'
+        fns = os.listdir(cachadir)
+        for fn in fns:
+            f = open(cachadir + fn, 'r')
+            cookiesDict = dict()
+            lines = f.readlines()
+            for line in lines:
+                if ':' in line:
+                    k, v = line.split(':')
+                    k = str(k).rstrip().lstrip()
+                    v = str(v).rstrip().lstrip()
+                    cookiesDict[k] = v
+            self.__cookiesPool.append(cookiesDict)
+        self.logger.info('发现%d个缓存数据，并已成功使用' % len(self.__cookiesPool))
 
     def persistCookies(self):
         """
         持久化 cookies
         :return:
         """
-        pass
+        from datetime import datetime
+        cachadir = 'cache/persistcookies/'
+        for cookies in self.__cookiesPool:
+            filename = cachadir + 'cache-' + str(datetime.now())
+            f = open(filename, 'w')
+            for k, v in cookies.items():
+                f.writelines(k + ":" + v + "\n")
+            f.close()
 
 
 class WeiboInfoFetcher(object):
