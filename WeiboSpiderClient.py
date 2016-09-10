@@ -1,8 +1,6 @@
 import logging
 import logging.config
-import threading
-from concurrent.futures import thread
-from time import sleep, time
+from time import sleep
 
 import pymysql
 
@@ -97,7 +95,7 @@ class WeiboSpiderClient(object):
 
                 # save to mysql
                 try:
-                    self.saver.saveWeiboUser(userInfoDict)
+                    self.saver.saveComment(userInfoDict)
                     self.saver.saveOriginalWeiboList(originalBlogs)
                     self.saver.saveForwardWeiboList(forwardBlogs)
                 except pymysql.err.InternalError:
@@ -130,7 +128,7 @@ if __name__ == '__main__':
 
     WeiboSpiderClient(initId) \
         .setSleepSeconds(0.05) \
-        .setLimitRecords(10000) \
+        .setLimitRecords(25000) \
         .setRecoverTimes(3) \
         .setBackupToFile(True) \
         .run()

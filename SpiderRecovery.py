@@ -108,6 +108,8 @@ class SpiderRecovery(object):
         self.__logger.info('from file : %s' % self.__backupFilePath)
         lines = rf.readlines()
         for line in lines[::-1]:
+            if line is None or line == '':
+                continue
             (data, mode) = self.__parseLine(line)
             mode = int(mode)
             if data not in usedSet and data not in newSet:  # 如果数据已经存在在其中一个集合，代表已经存在最新记录
@@ -125,7 +127,7 @@ class SpiderRecovery(object):
             self.__logger.info('Recovered  : UsedData：%i , NewData：%i' % (
                 len(self.usedData), len(self.newData)))
 
-        if totalData + 10000 < len(lines):  # 如果两者相差10000条数据
+        if totalData + 5000 < len(lines):  # 如果两者相差10000条数据
             self.__logger.info('The backup file need to be optimized , it will start now .')
             self.optimizeBackupFile()
         return usedSet, newSet

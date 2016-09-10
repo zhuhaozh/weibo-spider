@@ -210,7 +210,7 @@ class WeiBoMysqlSaver(object):
                               values('%s','%s','%s','%s','%s','%s','%s','%s','%s')
                               ''' % (
             originalBlog['createTime'], originalBlog['likeNum'], originalBlog['commentNum'],
-            originalBlog['forwardNum'], originalBlog['via'], originalBlog['owner'],
+            originalBlog['forwardNum'], originalBlog['via'].replace('\'', '\\\''), originalBlog['owner'],
             originalBlog['content'], originalBlog['picNum'], originalBlog['uniCode'])
 
         # print(sql)
