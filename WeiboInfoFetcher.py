@@ -69,6 +69,16 @@ class WeiboLogin(object):
         self.captchaPicDir = captchaPicPath
         return self
 
+    def login1(self, username, password):
+        weiboLogin = WeiboLogin() \
+            .setUsername(username) \
+            .setPassword(password) \
+            .initLoginParams()
+        print('请输入验证码：')
+        captcha = input()
+        r = weiboLogin.setCaptcha(captcha).login()
+        return r
+
     def login(self):
         param = {
             'mobile': self.username,
@@ -182,7 +192,7 @@ class CookiesPool(object):
 
         :return: cookies
         """
-        print(self.__invalidatedCookies)
+        # print(self.__invalidatedCookies)
         self.__last = self.__current
         index = -1
         for i in range(0, len(self.__invalidatedCookies)):
@@ -199,7 +209,7 @@ class CookiesPool(object):
                 else:
                     self.__current = i
                     self.__continuousUseCount = 0
-                self.logger.info("use pool index : %s" % i)
+                # self.logger.info("use pool index : %s" % i)
                 self.__invalidateReduce()
                 return self.__cookiesPool[i]
 
@@ -290,6 +300,13 @@ class WeiboInfoFetcher(object):
         self.logger = logging.getLogger()
 
     def fetchPageWithNum(self, baseUrl, userId, pageNum):
+        """
+
+        :param baseUrl:
+        :param userId:
+        :param pageNum:
+        :return:
+        """
 
         url = baseUrl % (userId, pageNum)
         resp = requests.get(url, headers=self.cookiesPool.getCookies())
@@ -315,6 +332,15 @@ class WeiboInfoFetcher(object):
                 self.fetchPage(baseUrl, userId)
                 self.logger.info('%s获取失败，继续尝试,已经尝试次数%s'
                                  % baseUrl, self.failedTryCounter)
+
+    def fetch(self, url):
+        resp = requests.get(url, headers=self.cookiesPool.getCookies())
+        if resp.status_code is 200:
+            return str(resp.content, 'utf-8')
+        else:
+            self.cookiesPool.invalidateCurrent()
+            if self.failedTryNum < self.failedTryCounter:
+                self.logger.info('%s获取失败，继续尝试,已经尝试次数%s' % (url, self.failedTryCounter))
 
     def test(self):
         resp = requests.get("http://weibo.cn/2413995587/profile",

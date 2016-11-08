@@ -20,4 +20,9 @@ class WeiboForwardBlog(object):
         return str(self.createTime).__hash__() \
                + str(self.forwardOwner).__hash__() \
                + str(self.originalOwner).__hash__() \
-               + str(self.originalContent).__hash__()
+               + str(self.originalContent).__hash__() \
+               + self.likeNum \
+               + self.commentNum
+
+    def print(self):
+        print(', '.join(['%s:%s' % item for item in self.__dict__.items()]))

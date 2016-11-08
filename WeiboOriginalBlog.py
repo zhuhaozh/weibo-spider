@@ -15,5 +15,5 @@ class WeiboOriginalBlog(object):
                + str(self.owner).__hash__() \
                + str(self.content).__hash__()
 
-
-
+    def print(self):
+        print(', '.join(['%s:%s' % item for item in self.__dict__.items()]))
